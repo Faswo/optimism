@@ -12,7 +12,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      profile:
+      target:
         description: 'compile package type, op-node/op-batcher/op-proposer'
         type: string
         default: op-node
@@ -41,13 +41,24 @@ jobs:
         id: build_step
         run: |
           TARGET=${{ github.event.inputs.target }}
+          echo "Input Target is: ${{ github.event.inputs.target }}"
           if [ -z "$TARGET" ]; then
             TARGET="op-node"
           fi
           echo "Building target: $TARGET"
           make $TARGET
           echo "target=${TARGET}" >> $GITHUB_OUTPUT
-
+      - name: Set artifact name
+        id: set_artifact_name
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            ARTIFACT_NAME="${{ steps.build_step.outputs.target }}-${{ github.ref_name }}"
+          else
+            SHORT_COMMIT_ID=$(git rev-parse --short HEAD)
+            ARTIFACT_NAME="${{ steps.build_step.outputs.target }}-${SHORT_COMMIT_ID}"
+          fi
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
       - name: Archive binary (on tag)
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
 
@@ -55,7 +66,7 @@ jobs:
           NEXUS_URL="http://69.67.150.129:8081/repository/${{ steps.build_step.outputs.target }}"
           NEXUS_USER="admin"
           NEXUS_PASSWORD="mega@123"
-          ARTIFACT_NAME="${{ steps.build_step.outputs.target }}-${{ github.ref_name }}"
+          ARTIFACT_NAME=${{ steps.set_artifact_name.outputs.ARTIFACT_NAME }}
           ARTIFACT_PATH="./${{ steps.build_step.outputs.target }}/bin/${{ steps.build_step.outputs.target }}"
           curl -u $NEXUS_USER:$NEXUS_PASSWORD \
                -X PUT "$NEXUS_URL/$ARTIFACT_NAME" \
