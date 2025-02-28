@@ -63,13 +63,11 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
 
         run: |
-          NEXUS_URL="http://69.67.150.129:8081/repository/${{ steps.build_step.outputs.target }}"
-          NEXUS_USER="admin"
-          NEXUS_PASSWORD="mega@123"
+          NEXUS_UPLOAD_URL="${{ secrets.NEXUS_URL }}/repository/${{ steps.build_step.outputs.target }}"
           ARTIFACT_NAME=${{ steps.set_artifact_name.outputs.ARTIFACT_NAME }}
           ARTIFACT_PATH="./${{ steps.build_step.outputs.target }}/bin/${{ steps.build_step.outputs.target }}"
-          curl -u $NEXUS_USER:$NEXUS_PASSWORD \
-               -X PUT "$NEXUS_URL/$ARTIFACT_NAME" \
+          curl -u ${{ secrets.NEXUS_URL }}:${{ secrets.NEXUS_PWD }} \
+               -X PUT "$NEXUS_UPLOAD_URL/$ARTIFACT_NAME" \
                -T $ARTIFACT_PATH \
                -H "Content-Type: application/octet-stream" \
                -v
